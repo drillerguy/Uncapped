@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "uncapped.collection.v1";
-  const APP_VERSION = "0.2.0";
+  const APP_VERSION = "0.2.1";
   const rarityOrder = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
 
   const state = {
