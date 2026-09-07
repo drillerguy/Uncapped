@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "uncapped.collection.v1";
-  const APP_VERSION = "0.1.0";
+  const APP_VERSION = "0.2.0";
   const rarityOrder = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
 
   const state = {
@@ -97,9 +97,9 @@
 
     el.manualForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      const barcode = normalizeBarcode(el.upcInput.value);
+      const barcode = extractProductBarcode(el.upcInput.value);
       if (!isValidBarcode(barcode)) {
-        setStatus("Enter an 8–14 digit UPC/EAN barcode.", true);
+        setStatus("Enter a valid UPC, EAN, or GTIN barcode.", true);
         return;
       }
       processBarcode(barcode);
@@ -132,12 +132,20 @@
             Html5QrcodeSupportedFormats.UPC_A,
             Html5QrcodeSupportedFormats.UPC_E,
             Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_93,
+            Html5QrcodeSupportedFormats.ITF,
+            Html5QrcodeSupportedFormats.DATA_MATRIX,
+            Html5QrcodeSupportedFormats.RSS_14,
+            Html5QrcodeSupportedFormats.RSS_EXPANDED,
+            Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION
           ]
         },
         (decodedText) => {
           if (state.scanLocked) return;
-          const barcode = normalizeBarcode(decodedText);
+          const barcode = extractProductBarcode(decodedText);
           if (!isValidBarcode(barcode)) return;
           state.scanLocked = true;
           stopScanner().finally(() => processBarcode(barcode));
@@ -148,7 +156,7 @@
       state.scannerRunning = true;
       el.startScannerBtn.classList.add("hidden");
       el.stopScannerBtn.classList.remove("hidden");
-      setStatus("Camera ready — line up the UPC inside the frame.");
+      setStatus("Camera ready — line up the product barcode inside the frame.");
     } catch (error) {
       state.scannerRunning = false;
       restoreScannerPlaceholder();
@@ -186,9 +194,9 @@
   }
 
   async function processBarcode(rawBarcode) {
-    const barcode = normalizeBarcode(rawBarcode);
+    const barcode = extractProductBarcode(rawBarcode);
     if (!isValidBarcode(barcode)) {
-      setStatus("That doesn't look like a UPC/EAN barcode.", true);
+      setStatus("That doesn't look like a UPC, EAN, or GTIN product barcode.", true);
       state.scanLocked = false;
       return;
     }
@@ -218,7 +226,108 @@
     }
   }
 
+  const VERIFIED_PRODUCT_CATALOG = {
+    "01201303": { name: "Pepsi", brand: "Pepsi", category: "Soda", quantity: "12 fl oz", source: "Verified catalog" },
+    "012000100109": { name: "Pepsi", brand: "Pepsi", category: "Soda", quantity: "12 fl oz cans", source: "Verified catalog" },
+    "012000018770": { name: "Pepsi Zero Sugar", brand: "Pepsi", category: "Soda", quantity: "12 fl oz", source: "Verified catalog" },
+    "049000006346": { name: "Coca-Cola Classic", brand: "Coca-Cola", category: "Soda", quantity: "12 fl oz", source: "Verified catalog" },
+    "070847811169": { name: "Monster Energy Original", brand: "Monster Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "070847020530": { name: "Monster Energy Ultra Black", brand: "Monster Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "070847012474": { name: "Monster Energy Zero Ultra", brand: "Monster Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "084259510936": { name: "C4 Performance Energy Orange Slice", brand: "C4 Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "0084259510936": { name: "C4 Performance Energy Orange Slice", brand: "C4 Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "842595139778": { name: "C4 Energy Pink Lemonade", brand: "C4 Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "611269991000": { name: "Red Bull Energy Drink", brand: "Red Bull", category: "Energy", quantity: "8.4 fl oz", source: "Verified catalog" },
+    "081809400001": { name: "Rockstar Energy Drink", brand: "Rockstar", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" }
+  };
+
+  const BRAND_PREFIXES = [
+    { prefix: "012000", brand: "PepsiCo", name: "PepsiCo Beverage", category: "Beverage" },
+    { prefix: "049000", brand: "The Coca-Cola Company", name: "Coca-Cola Company Beverage", category: "Beverage" },
+    { prefix: "070847", brand: "Monster Energy", name: "Monster Energy Beverage", category: "Energy" },
+    { prefix: "0842595", brand: "C4 Energy", name: "C4 Energy Beverage", category: "Energy" },
+    { prefix: "842595", brand: "C4 Energy", name: "C4 Energy Beverage", category: "Energy" },
+    { prefix: "611269", brand: "Red Bull", name: "Red Bull Energy Drink", category: "Energy" },
+    { prefix: "0818094", brand: "Rockstar", name: "Rockstar Energy Drink", category: "Energy" },
+    { prefix: "818094", brand: "Rockstar", name: "Rockstar Energy Drink", category: "Energy" }
+  ];
+
   async function lookupProduct(barcode) {
+    const variants = barcodeVariants(barcode);
+
+    for (const code of variants) {
+      if (VERIFIED_PRODUCT_CATALOG[code]) {
+        return { ...VERIFIED_PRODUCT_CATALOG[code], image: "" };
+      }
+    }
+
+    const providers = [lookupUpcDev, lookupBarcodeFinder, lookupOpenFoodFacts];
+
+    for (const provider of providers) {
+      for (const code of variants.slice(0, 3)) {
+        try {
+          const product = await provider(code);
+          if (product && (product.name || product.brand)) return product;
+        } catch (_) {
+          // A provider can be unavailable, rate-limited, or block browser CORS.
+          // Continue to the next source instead of failing the scan.
+        }
+      }
+    }
+
+    const inferred = inferBrandFromPrefix(variants);
+    return inferred;
+  }
+
+  async function lookupUpcDev(barcode) {
+    const response = await fetchWithTimeout(
+      "https://upc.dev/v1/product/" + encodeURIComponent(barcode),
+      { headers: { Accept: "application/json" } },
+      4500
+    );
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const p = payload && payload.data ? payload.data : payload;
+    if (!p || p.ok === false || (!p.name && !p.brand)) return null;
+
+    const name = cleanText(p.name || p.title || "");
+    const brand = cleanText(p.brand || p.manufacturer || "");
+    const category = cleanText(p.category || "");
+    return {
+      name: name || "Unknown beverage",
+      brand: brand || "Unknown brand",
+      category: classifyCategory(category + " " + name + " " + brand),
+      image: p.image_url || p.image || "",
+      quantity: cleanText(p.weight || p.size || ""),
+      source: "upc.dev"
+    };
+  }
+
+  async function lookupBarcodeFinder(barcode) {
+    const response = await fetchWithTimeout(
+      "https://api.barcodefinder.info/barcode/" + encodeURIComponent(barcode),
+      { headers: { Accept: "application/json" } },
+      4500
+    );
+    if (!response.ok) return null;
+    const p = await response.json();
+    if (!p || (!p.title && !p.name && !p.brand)) return null;
+
+    const name = cleanText(p.title || p.name || "");
+    const brand = cleanText(p.brand || p.manufacturer || "");
+    const category = cleanText(p.category || "");
+    const images = Array.isArray(p.images) ? p.images : [];
+    return {
+      name: name || "Unknown beverage",
+      brand: brand || "Unknown brand",
+      category: classifyCategory(category + " " + name + " " + brand),
+      image: images[0] || p.image || p.image_url || "",
+      quantity: cleanText(p.size || p.quantity || ""),
+      source: "BarcodeFinder"
+    };
+  }
+
+  async function lookupOpenFoodFacts(barcode) {
     const fields = [
       "code",
       "product_name",
@@ -237,11 +346,11 @@
       ".json?fields=" +
       encodeURIComponent(fields);
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: { Accept: "application/json" }
-    });
+    }, 4500);
 
-    if (!response.ok) throw new Error("Lookup failed");
+    if (!response.ok) return null;
     const data = await response.json();
     if (data.status !== 1 || !data.product) return null;
 
@@ -259,6 +368,42 @@
       quantity: cleanText(p.quantity || ""),
       source: "Open Food Facts"
     };
+  }
+
+  function inferBrandFromPrefix(variants) {
+    for (const code of variants) {
+      const match = BRAND_PREFIXES.find((entry) => code.startsWith(entry.prefix));
+      if (match) {
+        return {
+          name: match.name,
+          brand: match.brand,
+          category: match.category,
+          image: "",
+          quantity: "",
+          source: "Manufacturer prefix"
+        };
+      }
+    }
+    return null;
+  }
+
+  function barcodeVariants(barcode) {
+    const values = new Set([barcode]);
+    if (barcode.length === 12) values.add("0" + barcode);
+    if (barcode.length === 13 && barcode.startsWith("0")) values.add(barcode.slice(1));
+    if (barcode.length === 14 && barcode.startsWith("0")) values.add(barcode.slice(1));
+    if (barcode.length === 14 && barcode.startsWith("00")) values.add(barcode.slice(2));
+    return Array.from(values).filter(isValidBarcode);
+  }
+
+  async function fetchWithTimeout(url, options, timeoutMs) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...(options || {}), signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   function classifyCategory(source) {
@@ -635,8 +780,27 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.collection));
   }
 
+  function extractProductBarcode(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+
+    const parenthesizedGtIn = raw.match(/\(01\)\s*(\d{14})/);
+    if (parenthesizedGtIn) return parenthesizedGtIn[1];
+
+    const digits = raw.replace(/\D/g, "");
+
+    // GS1-128 / GS1 Data Matrix commonly starts with Application Identifier 01,
+    // followed by a 14-digit GTIN and then lot/date data.
+    if (digits.length >= 16 && digits.startsWith("01")) {
+      return digits.slice(2, 16);
+    }
+
+    if (/^\d{8,14}$/.test(digits)) return digits;
+    return "";
+  }
+
   function normalizeBarcode(value) {
-    return String(value || "").replace(/\D/g, "").slice(0, 14);
+    return extractProductBarcode(value);
   }
 
   function isValidBarcode(value) {
