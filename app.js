@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "uncapped.collection.v1";
-  const APP_VERSION = "0.2.1";
+  const APP_VERSION = "0.2.2";
   const rarityOrder = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
 
   const state = {
@@ -116,32 +116,29 @@
 
     state.scanLocked = false;
     el.reader.innerHTML = "";
-    state.scanner = new Html5Qrcode("reader", { verbose: false });
+
+    // Put the retail formats on the scanner itself. Keeping the decoder focused
+    // on product codes makes 1-D UPC/EAN recognition faster on phones.
+    state.scanner = new Html5Qrcode("reader", {
+      verbose: false,
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.DATA_MATRIX
+      ]
+    });
 
     try {
       await state.scanner.start(
         { facingMode: "environment" },
         {
-          fps: 10,
-          qrbox: (width, height) => {
-            const boxWidth = Math.min(Math.floor(width * 0.84), 340);
-            return { width: boxWidth, height: Math.max(120, Math.floor(boxWidth * 0.48)) };
-          },
-          aspectRatio: 1.777778,
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.CODE_93,
-            Html5QrcodeSupportedFormats.ITF,
-            Html5QrcodeSupportedFormats.DATA_MATRIX,
-            Html5QrcodeSupportedFormats.RSS_14,
-            Html5QrcodeSupportedFormats.RSS_EXPANDED,
-            Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION
-          ]
+          // No qrbox or forced aspect ratio: scan the entire camera frame.
+          // This matters on curved cans where the bars may sit outside a narrow box.
+          fps: 15,
+          disableFlip: true
         },
         (decodedText) => {
           if (state.scanLocked) return;
@@ -156,7 +153,7 @@
       state.scannerRunning = true;
       el.startScannerBtn.classList.add("hidden");
       el.stopScannerBtn.classList.remove("hidden");
-      setStatus("Camera ready — line up the product barcode inside the frame.");
+      setStatus("Camera ready — fill the screen with the barcode and slowly roll the can until the bars are sharp.");
     } catch (error) {
       state.scannerRunning = false;
       restoreScannerPlaceholder();
@@ -189,7 +186,7 @@
       '<div class="scanner-placeholder">' +
       '<div class="scan-frame" aria-hidden="true"></div>' +
       '<strong>Camera scanner</strong>' +
-      '<span>Works best with the barcode flat and well lit.</span>' +
+      '<span>Fill most of the camera view. On cans, slowly roll it until all bars look straight.</span>' +
       "</div>";
   }
 
@@ -202,7 +199,12 @@
     }
 
     el.upcInput.value = barcode;
-    setStatus("Looking up " + barcode + "…");
+    const expandedUpca = barcode.length === 8 ? expandUpceToUpca(barcode) : "";
+    setStatus(
+      expandedUpca
+        ? "Read UPC-E " + barcode + " — searching it as " + expandedUpca + " too…"
+        : "Read " + barcode + " — looking it up…"
+    );
 
     try {
       const product = await lookupProduct(barcode);
@@ -227,7 +229,8 @@
   }
 
   const VERIFIED_PRODUCT_CATALOG = {
-    "01201303": { name: "Pepsi", brand: "Pepsi", category: "Soda", quantity: "12 fl oz", source: "Verified catalog" },
+    "01231003": { name: "Pepsi", brand: "Pepsi", category: "Soda", quantity: "12 fl oz", source: "Verified catalog" },
+    "012000003103": { name: "Pepsi", brand: "Pepsi", category: "Soda", quantity: "12 fl oz", source: "Verified catalog" },
     "012000100109": { name: "Pepsi", brand: "Pepsi", category: "Soda", quantity: "12 fl oz cans", source: "Verified catalog" },
     "012000018770": { name: "Pepsi Zero Sugar", brand: "Pepsi", category: "Soda", quantity: "12 fl oz", source: "Verified catalog" },
     "049000006346": { name: "Coca-Cola Classic", brand: "Coca-Cola", category: "Soda", quantity: "12 fl oz", source: "Verified catalog" },
@@ -403,11 +406,58 @@
 
   function barcodeVariants(barcode) {
     const values = new Set([barcode]);
+
+    // UPC-E is a zero-suppressed form of a GTIN-12. Many product databases
+    // store only the expanded UPC-A number, so always search both forms.
+    if (barcode.length === 8) {
+      const expanded = expandUpceToUpca(barcode);
+      if (expanded) values.add(expanded);
+    }
+
     if (barcode.length === 12) values.add("0" + barcode);
     if (barcode.length === 13 && barcode.startsWith("0")) values.add(barcode.slice(1));
     if (barcode.length === 14 && barcode.startsWith("0")) values.add(barcode.slice(1));
     if (barcode.length === 14 && barcode.startsWith("00")) values.add(barcode.slice(2));
     return Array.from(values).filter(isValidBarcode);
+  }
+
+  function expandUpceToUpca(upce) {
+    if (!/^[01]\d{7}$/.test(upce)) return "";
+
+    const numberSystem = upce[0];
+    const x1 = upce[1];
+    const x2 = upce[2];
+    const x3 = upce[3];
+    const x4 = upce[4];
+    const x5 = upce[5];
+    const x6 = upce[6];
+    const check = upce[7];
+
+    let upca;
+    if ("012".includes(x6)) {
+      upca = numberSystem + x1 + x2 + x6 + "0000" + x3 + x4 + x5 + check;
+    } else if (x6 === "3") {
+      upca = numberSystem + x1 + x2 + x3 + "00000" + x4 + x5 + check;
+    } else if (x6 === "4") {
+      upca = numberSystem + x1 + x2 + x3 + x4 + "00000" + x5 + check;
+    } else {
+      upca = numberSystem + x1 + x2 + x3 + x4 + x5 + "0000" + x6 + check;
+    }
+
+    return hasValidGtinCheckDigit(upca) ? upca : "";
+  }
+
+  function hasValidGtinCheckDigit(code) {
+    if (!/^\d{8,14}$/.test(code)) return false;
+    const digits = code.split("").map(Number);
+    const check = digits.pop();
+    let sum = 0;
+    let weight = 3;
+    for (let i = digits.length - 1; i >= 0; i -= 1) {
+      sum += digits[i] * weight;
+      weight = weight === 3 ? 1 : 3;
+    }
+    return ((10 - (sum % 10)) % 10) === check;
   }
 
   async function fetchWithTimeout(url, options, timeoutMs) {
