@@ -34,12 +34,12 @@
             <div class="scanner-placeholder">
               <div class="scan-frame" aria-hidden="true"></div>
               <strong>Camera scanner</strong>
-              <span>Works best with the barcode flat and well lit.</span>
+              <span>UPC-E supported. Fill most of the camera view and slowly roll curved cans until the bars are sharp.</span>
             </div>
           </div>
 
           <div class="scanner-actions">
-            <button id="startScannerBtn" class="primary-button" type="button">Scan a UPC</button>
+            <button id="startScannerBtn" class="primary-button" type="button">Scan barcode</button>
             <button id="stopScannerBtn" class="secondary-button hidden" type="button">Stop camera</button>
           </div>
 
@@ -48,7 +48,7 @@
           <form id="manualForm" class="manual-form">
             <label for="upcInput">UPC / EAN / GTIN</label>
             <div class="input-row">
-              <input id="upcInput" name="upc" inputmode="numeric" autocomplete="off" placeholder="e.g. 01201303 or 070847811169" />
+              <input id="upcInput" name="upc" inputmode="numeric" autocomplete="off" placeholder="e.g. 01231003 or 070847811169" />
               <button class="secondary-button" type="submit">Look up</button>
             </div>
           </form>
