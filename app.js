@@ -238,7 +238,18 @@
     "0084259510936": { name: "C4 Performance Energy Orange Slice", brand: "C4 Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
     "842595139778": { name: "C4 Energy Pink Lemonade", brand: "C4 Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
     "611269991000": { name: "Red Bull Energy Drink", brand: "Red Bull", category: "Energy", quantity: "8.4 fl oz", source: "Verified catalog" },
-    "081809400001": { name: "Rockstar Energy Drink", brand: "Rockstar", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" }
+    "081809400001": { name: "Rockstar Energy Drink", brand: "Rockstar", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "012000000850": { name: "Mountain Dew", brand: "Mountain Dew", category: "Soda", quantity: "12 fl oz", source: "Verified catalog" },
+    "012000163807": { name: "Mountain Dew", brand: "Mountain Dew", category: "Soda", quantity: "12 fl oz", source: "Verified catalog" },
+    "889392000313": { name: "CELSIUS Sparkling Orange", brand: "CELSIUS", category: "Energy", quantity: "12 fl oz", source: "Verified catalog" },
+    "889392001723": { name: "CELSIUS Retro Vibe", brand: "CELSIUS", category: "Energy", quantity: "12 fl oz", source: "Verified catalog" },
+    "810085812180": { name: "GHOST Energy Orange Cream", brand: "GHOST Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "081008581689": { name: "GHOST Energy Electric Limeade", brand: "GHOST Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "0081008581689": { name: "GHOST Energy Electric Limeade", brand: "GHOST Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "810169604199": { name: "GHOST Energy A&W Root Beer", brand: "GHOST Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
+    "078000804690": { name: "Dr Pepper", brand: "Dr Pepper", category: "Soda", quantity: "12 fl oz cans", source: "Verified catalog" },
+    "052000328677": { name: "Gatorade Orange Thirst Quencher", brand: "Gatorade", category: "Sports", quantity: "20 fl oz", source: "Verified catalog" },
+    "052000328660": { name: "Gatorade Fruit Punch Thirst Quencher", brand: "Gatorade", category: "Sports", quantity: "20 fl oz", source: "Verified catalog" }
   };
 
   const BRAND_PREFIXES = [
@@ -249,7 +260,10 @@
     { prefix: "842595", brand: "C4 Energy", name: "C4 Energy Beverage", category: "Energy" },
     { prefix: "611269", brand: "Red Bull", name: "Red Bull Energy Drink", category: "Energy" },
     { prefix: "0818094", brand: "Rockstar", name: "Rockstar Energy Drink", category: "Energy" },
-    { prefix: "818094", brand: "Rockstar", name: "Rockstar Energy Drink", category: "Energy" }
+    { prefix: "818094", brand: "Rockstar", name: "Rockstar Energy Drink", category: "Energy" },
+    { prefix: "889392", brand: "CELSIUS", name: "CELSIUS Energy Drink", category: "Energy" },
+    { prefix: "052000", brand: "Gatorade", name: "Gatorade Beverage", category: "Sports" },
+    { prefix: "078000", brand: "Keurig Dr Pepper", name: "Keurig Dr Pepper Beverage", category: "Beverage" }
   ];
 
   async function lookupProduct(barcode) {
