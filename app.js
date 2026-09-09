@@ -3,7 +3,7 @@
 
   const STORAGE_KEY = "uncapped.collection.v1";
   const BATTLE_KEY = "uncapped.battle.v1";
-  const APP_VERSION = "0.3.0";
+  const APP_VERSION = "0.4.0";
   const rarityOrder = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
 
   const state = {
@@ -13,6 +13,7 @@
     scanLocked: false,
     activeCardBarcode: null,
     manualMode: "create",
+    revealTimer: null,
     battleOpponent: null,
     battleRecord: loadBattleRecord(),
     deferredInstallPrompt: null
@@ -69,6 +70,16 @@
     manualName: document.getElementById("manualName"),
     manualCategory: document.getElementById("manualCategory"),
     cancelManualBtn: document.getElementById("cancelManualBtn"),
+    cardReveal: document.getElementById("cardReveal"),
+    revealKicker: document.getElementById("revealKicker"),
+    revealRarity: document.getElementById("revealRarity"),
+    revealCardMount: document.getElementById("revealCardMount"),
+    revealPower: document.getElementById("revealPower"),
+    revealSpeed: document.getElementById("revealSpeed"),
+    revealEndurance: document.getElementById("revealEndurance"),
+    revealVaultBtn: document.getElementById("revealVaultBtn"),
+    revealBattleBtn: document.getElementById("revealBattleBtn"),
+    revealScanBtn: document.getElementById("revealScanBtn"),
     toast: document.getElementById("toast")
   };
 
@@ -79,6 +90,7 @@
     bindScanner();
     bindCollection();
     bindBattle();
+    bindReveal();
     bindDialogs();
     bindBackup();
     bindInstall();
@@ -234,15 +246,15 @@
 
     if (!product) product = fallbackProductForBarcode(barcode);
 
+    const wasInVault = Boolean(state.collection[barcode]);
     const card = saveDiscovery(barcode, product);
     setStatus(
-      card.scans > 1
-        ? "Card found — scan count updated. Tap Play to battle with it."
-        : "Card unlocked! " + card.rarity + " • Power " + cardStats(card).power
+      wasInVault
+        ? "Already in your vault — scan count updated."
+        : "New " + card.rarity + " card unlocked!"
     );
     renderAll();
-    showCard(card);
-    toast(card.scans > 1 ? "Card updated" : card.rarity + " card unlocked");
+    showCardReveal(card, wasInVault);
     state.scanLocked = false;
   }
 
@@ -843,6 +855,105 @@
     }, 1800);
   }
 
+  function bindReveal() {
+    if (!el.cardReveal) return;
+
+    el.revealVaultBtn.addEventListener("click", () => {
+      closeCardReveal();
+      navigate("collection");
+    });
+
+    el.revealBattleBtn.addEventListener("click", () => {
+      closeCardReveal();
+      navigate("play");
+    });
+
+    el.revealScanBtn.addEventListener("click", () => {
+      closeCardReveal();
+      navigate("scan");
+      window.setTimeout(() => startScanner(), 220);
+    });
+
+    const backdrop = el.cardReveal.querySelector(".reveal-backdrop");
+    if (backdrop) {
+      backdrop.addEventListener("click", () => closeCardReveal());
+    }
+  }
+
+  function showCardReveal(card, isDuplicate) {
+    if (!el.cardReveal || !el.revealCardMount) {
+      showCard(card);
+      return;
+    }
+
+    state.activeCardBarcode = card.barcode;
+    window.clearTimeout(state.revealTimer);
+
+    const stats = cardStats(card);
+    el.revealCardMount.innerHTML = cardMarkup(card);
+    el.revealCardMount.querySelectorAll("[data-card-barcode]").forEach((button) => button.remove());
+
+    el.revealKicker.textContent = isDuplicate ? "ALREADY IN VAULT" : "NEW CARD";
+    el.revealRarity.textContent = isDuplicate ? "DUPLICATE • ×" + Number(card.scans || 1) : card.rarity.toUpperCase();
+    el.revealPower.textContent = "0";
+    el.revealSpeed.textContent = "0";
+    el.revealEndurance.textContent = "0";
+
+    el.cardReveal.dataset.rarity = card.rarity;
+    el.cardReveal.dataset.category = card.category;
+    el.cardReveal.classList.toggle("duplicate", Boolean(isDuplicate));
+    el.cardReveal.classList.remove("hidden", "reveal-active");
+    el.cardReveal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("reveal-open");
+
+    // Force a fresh animation even when two cards are scanned back to back.
+    void el.cardReveal.offsetWidth;
+    el.cardReveal.classList.add("reveal-active");
+
+    const delay = isDuplicate ? 360 : 820;
+    window.setTimeout(() => {
+      animateStatCounter(el.revealPower, stats.power, 520);
+      animateStatCounter(el.revealSpeed, stats.speed, 620);
+      animateStatCounter(el.revealEndurance, stats.endurance, 720);
+    }, delay);
+
+    if (navigator.vibrate) {
+      const pattern = card.rarity === "Legendary"
+        ? [45, 35, 65, 35, 90]
+        : card.rarity === "Epic"
+          ? [45, 35, 70]
+          : [35];
+      try { navigator.vibrate(pattern); } catch (_) {}
+    }
+  }
+
+  function closeCardReveal() {
+    if (!el.cardReveal) return;
+    window.clearTimeout(state.revealTimer);
+    el.cardReveal.classList.remove("reveal-active");
+    el.cardReveal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("reveal-open");
+    state.revealTimer = window.setTimeout(() => {
+      el.cardReveal.classList.add("hidden");
+      el.cardReveal.classList.remove("duplicate");
+    }, 260);
+  }
+
+  function animateStatCounter(node, target, duration) {
+    if (!node) return;
+    const started = performance.now();
+    const endValue = Math.max(0, Number(target || 0));
+
+    function frame(now) {
+      const progress = Math.min(1, (now - started) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      node.textContent = String(Math.round(endValue * eased));
+      if (progress < 1) requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
   function bindDialogs() {
     el.closeDialogBtn.addEventListener("click", () => el.cardDialog.close());
     el.cardDialog.addEventListener("click", (event) => {
@@ -885,10 +996,15 @@
         card = saveDiscovery(barcode, product);
       }
 
+      const wasEdit = state.manualMode === "edit";
       el.manualProductDialog.close();
       renderAll();
-      showCard(card);
-      toast(state.manualMode === "edit" ? "Card updated" : card.rarity + " card added");
+      if (wasEdit) {
+        showCard(card);
+        toast("Card updated");
+      } else {
+        showCardReveal(card, false);
+      }
     });
   }
 
