@@ -506,8 +506,8 @@
     if (inferred) return inferred;
 
     return {
-      name: "Unidentified Scan",
-      brand: "Mystery Beverage",
+      name: "Unknown beverage",
+      brand: "Unknown brand",
       category: "Beverage",
       image: "",
       quantity: "",
