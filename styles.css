@@ -251,7 +251,7 @@ select:focus { border-color: rgba(232,255,84,.7); }
 
 .mini-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-top: 12px;
 }
@@ -487,7 +487,7 @@ select:focus { border-color: rgba(232,255,84,.7); }
   bottom: 0;
   width: min(100%, 760px);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   border-top: 1px solid var(--line);
   background: rgba(12,14,17,.94);
   backdrop-filter: blur(18px);
@@ -761,4 +761,315 @@ select:focus { border-color: rgba(232,255,84,.7); }
   .battle-card-mount .card-art { height: 44%; }
   .battle-card-mount .card-name { font-size: .8rem; }
   .battle-card-mount .card-game-stats strong { font-size: .62rem; }
+}
+
+
+/* v0.4.0 — animated card reveal */
+body.reveal-open {
+  overflow: hidden;
+  touch-action: none;
+}
+
+.card-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding:
+    calc(18px + env(safe-area-inset-top, 0px))
+    16px
+    calc(18px + env(safe-area-inset-bottom, 0px));
+  opacity: 0;
+  transition: opacity .24s ease;
+}
+
+.card-reveal.reveal-active {
+  opacity: 1;
+}
+
+.reveal-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(232,255,84,.12), transparent 36%),
+    rgba(4,6,8,.94);
+  backdrop-filter: blur(18px);
+}
+
+.reveal-burst {
+  position: absolute;
+  width: 150vmax;
+  height: 150vmax;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(.08) rotate(0deg);
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      rgba(255,255,255,.14) 0deg 2deg,
+      transparent 2deg 12deg
+    );
+  mask-image: radial-gradient(circle, #000 0 27%, transparent 62%);
+  -webkit-mask-image: radial-gradient(circle, #000 0 27%, transparent 62%);
+  pointer-events: none;
+}
+
+.reveal-active .reveal-burst {
+  animation: revealBurst 1.25s cubic-bezier(.18,.84,.32,1) both;
+}
+
+.reveal-content {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 430px);
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.reveal-kicker {
+  min-height: 1.1em;
+  color: rgba(255,255,255,.72);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .22em;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.reveal-rarity {
+  margin-top: 5px;
+  min-height: 1.2em;
+  font-size: clamp(1.35rem, 7vw, 2.25rem);
+  line-height: 1;
+  font-weight: 1000;
+  letter-spacing: -.025em;
+  opacity: 0;
+  transform: scale(.7);
+  text-shadow: 0 0 28px currentColor;
+}
+
+.reveal-active .reveal-kicker {
+  animation: revealTextIn .35s .18s ease-out both;
+}
+
+.reveal-active .reveal-rarity {
+  animation: rarityPop .6s .32s cubic-bezier(.12,.95,.3,1.35) both;
+}
+
+.card-reveal[data-rarity="Common"] .reveal-rarity { color: #e8edf4; }
+.card-reveal[data-rarity="Uncommon"] .reveal-rarity { color: #75f0b2; }
+.card-reveal[data-rarity="Rare"] .reveal-rarity { color: #75baff; }
+.card-reveal[data-rarity="Epic"] .reveal-rarity { color: #d195ff; }
+.card-reveal[data-rarity="Legendary"] .reveal-rarity { color: #ffe873; }
+
+.reveal-stage {
+  width: min(76vw, 315px);
+  margin-top: 16px;
+  perspective: 1200px;
+}
+
+.reveal-card-mount {
+  transform-style: preserve-3d;
+  opacity: 0;
+  transform: translateY(46px) scale(.72) rotateY(112deg) rotateZ(-4deg);
+  filter: blur(5px);
+}
+
+.reveal-card-mount .collectible {
+  width: 100%;
+  box-shadow:
+    0 28px 70px rgba(0,0,0,.55),
+    0 0 0 1px rgba(255,255,255,.09) inset;
+}
+
+.reveal-active .reveal-card-mount {
+  animation: cardFlipReveal .88s .24s cubic-bezier(.12,.78,.18,1) both;
+}
+
+.reveal-card-mount .collectible::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-90%) rotate(20deg);
+  background: linear-gradient(
+    100deg,
+    transparent 33%,
+    rgba(255,255,255,.05) 43%,
+    rgba(255,255,255,.62) 50%,
+    rgba(255,255,255,.08) 57%,
+    transparent 67%
+  );
+}
+
+.reveal-active .reveal-card-mount .collectible::after {
+  animation: foilSweep 1.05s .78s ease-out both;
+}
+
+.card-reveal[data-rarity="Rare"] .reveal-card-mount .collectible,
+.card-reveal[data-rarity="Epic"] .reveal-card-mount .collectible,
+.card-reveal[data-rarity="Legendary"] .reveal-card-mount .collectible {
+  animation: rareCardPulse 2.1s 1.05s ease-in-out infinite;
+}
+
+.card-reveal[data-rarity="Legendary"] .reveal-backdrop {
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255,232,115,.24), transparent 33%),
+    radial-gradient(circle at 10% 80%, rgba(232,255,84,.08), transparent 25%),
+    rgba(4,6,8,.95);
+}
+
+.card-reveal[data-category="Energy"] .reveal-backdrop {
+  box-shadow: inset 0 0 150px rgba(232,255,84,.05);
+}
+
+.card-reveal[data-category="Sports"] .reveal-backdrop {
+  box-shadow: inset 0 0 150px rgba(100,190,255,.055);
+}
+
+.card-reveal[data-category="Soda"] .reveal-backdrop {
+  box-shadow: inset 0 0 150px rgba(255,130,170,.045);
+}
+
+.reveal-stats {
+  width: min(100%, 360px);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.reveal-active .reveal-stats {
+  animation: revealTextIn .38s .86s ease-out both;
+}
+
+.reveal-stats div {
+  display: grid;
+  gap: 2px;
+  padding: 10px 5px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.09);
+  backdrop-filter: blur(8px);
+}
+
+.reveal-stats span {
+  color: rgba(255,255,255,.55);
+  font-size: .52rem;
+  font-weight: 900;
+  letter-spacing: .11em;
+}
+
+.reveal-stats strong {
+  color: var(--text);
+  font-size: 1.42rem;
+  line-height: 1.1;
+}
+
+.reveal-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.reveal-active .reveal-actions {
+  animation: revealTextIn .36s 1.02s ease-out both;
+}
+
+.card-reveal.duplicate .reveal-burst {
+  display: none;
+}
+
+.card-reveal.duplicate .reveal-card-mount {
+  animation-duration: .48s;
+  animation-delay: .08s;
+}
+
+.card-reveal.duplicate .reveal-rarity {
+  font-size: 1.2rem;
+}
+
+.card-reveal.duplicate .reveal-active .reveal-stats {
+  animation-delay: .42s;
+}
+
+@keyframes cardFlipReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(46px) scale(.72) rotateY(112deg) rotateZ(-4deg);
+    filter: blur(5px);
+  }
+  52% {
+    opacity: 1;
+    transform: translateY(-7px) scale(1.045) rotateY(-9deg) rotateZ(1deg);
+    filter: blur(0);
+  }
+  72% {
+    transform: translateY(2px) scale(.988) rotateY(4deg) rotateZ(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateY(0) rotateZ(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes revealBurst {
+  0% { opacity: 0; transform: scale(.08) rotate(0deg); }
+  35% { opacity: .85; }
+  100% { opacity: 0; transform: scale(1) rotate(16deg); }
+}
+
+@keyframes rarityPop {
+  0% { opacity: 0; transform: scale(.7); filter: blur(5px); }
+  65% { opacity: 1; transform: scale(1.08); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+@keyframes revealTextIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes foilSweep {
+  0% { opacity: 0; transform: translateX(-90%) rotate(20deg); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(95%) rotate(20deg); }
+}
+
+@keyframes rareCardPulse {
+  0%, 100% { box-shadow: 0 28px 70px rgba(0,0,0,.55), 0 0 24px rgba(255,255,255,.06); }
+  50% { box-shadow: 0 28px 70px rgba(0,0,0,.55), 0 0 42px rgba(255,255,255,.16); }
+}
+
+@media (max-height: 720px) {
+  .reveal-stage { width: min(61vw, 250px); margin-top: 9px; }
+  .reveal-stats { margin-top: 8px; }
+  .reveal-actions { margin-top: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-active .reveal-burst,
+  .reveal-active .reveal-card-mount,
+  .reveal-active .reveal-card-mount .collectible::after,
+  .reveal-active .reveal-kicker,
+  .reveal-active .reveal-rarity,
+  .reveal-active .reveal-stats,
+  .reveal-active .reveal-actions {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
 }
