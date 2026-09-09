@@ -251,7 +251,7 @@ select:focus { border-color: rgba(232,255,84,.7); }
 
 .mini-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-top: 12px;
 }
@@ -576,4 +576,189 @@ select:focus { border-color: rgba(232,255,84,.7); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+}
+
+
+/* v0.3.0 — playable card stats */
+.card-game-stats {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 29px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  z-index: 1;
+}
+
+.card-game-stats span {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 4px 2px;
+  border-radius: 8px;
+  background: rgba(0,0,0,.28);
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.card-game-stats small {
+  font-size: .46rem;
+  letter-spacing: .08em;
+  color: rgba(255,255,255,.58);
+}
+
+.card-game-stats strong {
+  font-size: .73rem;
+  line-height: 1;
+}
+
+.collectible .card-name {
+  padding-bottom: 33px;
+}
+
+.battle-record {
+  display: flex;
+  gap: 8px;
+  color: var(--muted);
+  font-size: .72rem;
+  white-space: nowrap;
+}
+
+.battle-record span {
+  padding: 7px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.battle-record strong { color: var(--text); }
+
+.battle-game {
+  display: grid;
+  gap: 14px;
+}
+
+.battle-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.battle-controls label {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.battle-arena {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.battle-card-mount .collectible {
+  width: 100%;
+  aspect-ratio: .72;
+}
+
+.battle-label {
+  display: block;
+  margin: 0 0 6px 4px;
+  color: var(--muted);
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.versus {
+  align-self: center;
+  padding-top: 24px;
+  font-size: .82rem;
+  font-weight: 1000;
+  color: var(--accent);
+}
+
+.battle-picker {
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.battle-stat-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.battle-stat-button {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 13px 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.battle-stat-button > span {
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+
+.battle-stat-button strong {
+  font-size: .72rem;
+}
+
+.battle-stat-button small {
+  font-size: 1.15rem;
+  font-weight: 1000;
+  color: var(--accent);
+}
+
+.battle-result {
+  min-height: 58px;
+  display: grid;
+  place-items: center;
+  padding: 12px 14px;
+  border-radius: 16px;
+  text-align: center;
+  font-weight: 900;
+  line-height: 1.35;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.035);
+}
+
+.battle-result.win {
+  border-color: rgba(232,255,84,.45);
+  background: rgba(232,255,84,.09);
+  color: var(--accent);
+}
+
+.battle-result.loss {
+  border-color: rgba(255,107,107,.35);
+  background: rgba(255,107,107,.08);
+  color: #ffaaaa;
+}
+
+.battle-result.tie {
+  color: #d7dde6;
+}
+
+@media (max-width: 390px) {
+  .battle-arena { gap: 5px; }
+  .battle-card-mount .card-art { height: 44%; }
+  .battle-card-mount .card-name { font-size: .8rem; }
+  .battle-card-mount .card-game-stats strong { font-size: .62rem; }
 }
