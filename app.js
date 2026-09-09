@@ -2,7 +2,8 @@
   "use strict";
 
   const STORAGE_KEY = "uncapped.collection.v1";
-  const APP_VERSION = "0.2.3";
+  const BATTLE_KEY = "uncapped.battle.v1";
+  const APP_VERSION = "0.3.0";
   const rarityOrder = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
 
   const state = {
@@ -12,6 +13,8 @@
     scanLocked: false,
     activeCardBarcode: null,
     manualMode: "create",
+    battleOpponent: null,
+    battleRecord: loadBattleRecord(),
     deferredInstallPrompt: null
   };
 
@@ -19,6 +22,7 @@
     views: {
       scan: document.getElementById("scanView"),
       collection: document.getElementById("collectionView"),
+      play: document.getElementById("playView"),
       profile: document.getElementById("profileView")
     },
     reader: document.getElementById("reader"),
@@ -36,6 +40,19 @@
     emptyCollection: document.getElementById("emptyCollection"),
     profileSummary: document.getElementById("profileSummary"),
     shareCollectionBtn: document.getElementById("shareCollectionBtn"),
+    battleEmpty: document.getElementById("battleEmpty"),
+    battleGame: document.getElementById("battleGame"),
+    battleCardSelect: document.getElementById("battleCardSelect"),
+    playerBattleCard: document.getElementById("playerBattleCard"),
+    opponentBattleCard: document.getElementById("opponentBattleCard"),
+    battleResult: document.getElementById("battleResult"),
+    battlePowerValue: document.getElementById("battlePowerValue"),
+    battleSpeedValue: document.getElementById("battleSpeedValue"),
+    battleEnduranceValue: document.getElementById("battleEnduranceValue"),
+    battleWins: document.getElementById("battleWins"),
+    battleLosses: document.getElementById("battleLosses"),
+    battleTies: document.getElementById("battleTies"),
+    newBattleBtn: document.getElementById("newBattleBtn"),
     exportBtn: document.getElementById("exportBtn"),
     importInput: document.getElementById("importInput"),
     clearBtn: document.getElementById("clearBtn"),
@@ -61,6 +78,7 @@
     bindNavigation();
     bindScanner();
     bindCollection();
+    bindBattle();
     bindDialogs();
     bindBackup();
     bindInstall();
@@ -88,6 +106,7 @@
     });
     if (viewName !== "scan") stopScanner();
     if (viewName === "collection") renderCollection();
+    if (viewName === "play") renderBattle();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -202,30 +221,29 @@
     const expandedUpca = barcode.length === 8 ? expandUpceToUpca(barcode) : "";
     setStatus(
       expandedUpca
-        ? "Read UPC-E " + barcode + " — searching it as " + expandedUpca + " too…"
-        : "Read " + barcode + " — looking it up…"
+        ? "Read UPC-E " + barcode + " — building your card and searching " + expandedUpca + " too…"
+        : "Read " + barcode + " — building your card…"
     );
 
+    let product = null;
     try {
-      const product = await lookupProduct(barcode);
-      if (!product) {
-        setStatus("Barcode found, but the product isn't in the public database yet.");
-        openManualProduct(barcode);
-        state.scanLocked = false;
-        return;
-      }
-
-      const card = saveDiscovery(barcode, product);
-      setStatus(card.scans > 1 ? "Already in your vault — scan count updated." : "New card discovered!");
-      renderAll();
-      showCard(card);
-      toast(card.scans > 1 ? "Card updated" : card.rarity + " card added");
-    } catch (error) {
-      setStatus("Product lookup failed. You can still add the drink manually.", true);
-      openManualProduct(barcode);
-    } finally {
-      state.scanLocked = false;
+      product = await lookupProduct(barcode);
+    } catch (_) {
+      // A product service should never block the game. A valid scan still earns a card.
     }
+
+    if (!product) product = fallbackProductForBarcode(barcode);
+
+    const card = saveDiscovery(barcode, product);
+    setStatus(
+      card.scans > 1
+        ? "Card found — scan count updated. Tap Play to battle with it."
+        : "Card unlocked! " + card.rarity + " • Power " + cardStats(card).power
+    );
+    renderAll();
+    showCard(card);
+    toast(card.scans > 1 ? "Card updated" : card.rarity + " card unlocked");
+    state.scanLocked = false;
   }
 
   const VERIFIED_PRODUCT_CATALOG = {
@@ -269,7 +287,6 @@
 
   const BRAND_PREFIXES = [
     { prefix: "012000", brand: "PepsiCo", name: "PepsiCo Beverage", category: "Beverage" },
-    { prefix: "04900000", brand: "Powerade / Coca-Cola", name: "Coca-Cola Sports Beverage", category: "Sports" },
     { prefix: "049000", brand: "The Coca-Cola Company", name: "Coca-Cola Company Beverage", category: "Beverage" },
     { prefix: "070847", brand: "Monster Energy", name: "Monster Energy Beverage", category: "Energy" },
     { prefix: "0842595", brand: "C4 Energy", name: "C4 Energy Beverage", category: "Energy" },
@@ -483,6 +500,21 @@
     }
   }
 
+  function fallbackProductForBarcode(barcode) {
+    const variants = barcodeVariants(barcode);
+    const inferred = inferBrandFromPrefix(variants);
+    if (inferred) return inferred;
+
+    return {
+      name: "Unidentified Scan",
+      brand: "Mystery Beverage",
+      category: "Beverage",
+      image: "",
+      quantity: "",
+      source: "Barcode scan"
+    };
+  }
+
   function classifyCategory(source) {
     const text = String(source || "").toLowerCase();
     if (/energy|monster|red bull|rockstar|bang\b/.test(text)) return "Energy";
@@ -555,9 +587,39 @@
     return hash >>> 0;
   }
 
+  function cardStats(card) {
+    const rarityBonus = {
+      Common: 0,
+      Uncommon: 4,
+      Rare: 8,
+      Epic: 12,
+      Legendary: 16
+    }[card.rarity] || 0;
+
+    const typeBonus = {
+      Energy: { power: 6, speed: 8, endurance: 0 },
+      Sports: { power: 3, speed: 4, endurance: 8 },
+      Soda: { power: 6, speed: 1, endurance: 3 },
+      Coffee: { power: 5, speed: 6, endurance: 2 },
+      Tea: { power: 2, speed: 4, endurance: 6 },
+      Water: { power: 0, speed: 3, endurance: 9 },
+      Juice: { power: 4, speed: 3, endurance: 5 },
+      Beer: { power: 5, speed: 0, endurance: 6 },
+      Beverage: { power: 3, speed: 3, endurance: 3 }
+    }[card.category] || { power: 3, speed: 3, endurance: 3 };
+
+    const base = (salt) => 34 + (stableHash(card.barcode + ":" + salt) % 41);
+    return {
+      power: Math.min(99, base("P") + rarityBonus + typeBonus.power),
+      speed: Math.min(99, base("S") + rarityBonus + typeBonus.speed),
+      endurance: Math.min(99, base("E") + rarityBonus + typeBonus.endurance)
+    };
+  }
+
   function renderAll() {
     renderStats();
     renderCollection();
+    renderBattle();
   }
 
   function renderStats() {
@@ -615,6 +677,7 @@
     const image = card.image
       ? '<img src="' + escapeAttr(card.image) + '" alt="" loading="lazy" referrerpolicy="no-referrer" />'
       : '<span class="initials">' + escapeHtml(initials(card.brand || card.name)) + "</span>";
+    const stats = cardStats(card);
 
     return (
       '<article class="collectible" data-rarity="' + escapeAttr(card.rarity) + '">' +
@@ -626,6 +689,11 @@
         '<div class="card-art">' + image + "</div>" +
         '<div class="card-brand">' + escapeHtml(card.brand) + "</div>" +
         '<div class="card-name">' + escapeHtml(card.name) + "</div>" +
+        '<div class="card-game-stats">' +
+          '<span><small>PWR</small><strong>' + stats.power + '</strong></span>' +
+          '<span><small>SPD</small><strong>' + stats.speed + '</strong></span>' +
+          '<span><small>END</small><strong>' + stats.endurance + '</strong></span>' +
+        "</div>" +
         '<div class="card-footer">' +
           '<span>#' + escapeHtml(card.serial) + "</span>" +
           '<span>×' + Number(card.scans || 1) + "</span>" +
@@ -639,9 +707,140 @@
     el.dialogCardMount.innerHTML = cardMarkup(card);
     const overlayButton = el.dialogCardMount.querySelector("button");
     if (overlayButton) overlayButton.remove();
-    if (typeof el.cardDialog.showModal === "function") {
-      el.cardDialog.showModal();
+
+    try {
+      if (el.cardDialog.open) el.cardDialog.close();
+      if (typeof el.cardDialog.showModal === "function") {
+        el.cardDialog.showModal();
+        return;
+      }
+    } catch (_) {
+      // If the dialog API fails, the card still exists in the vault.
     }
+
+    navigate("collection");
+    toast("Card added to your vault");
+  }
+
+  function bindBattle() {
+    if (!el.battleCardSelect) return;
+
+    el.battleCardSelect.addEventListener("change", () => {
+      state.battleOpponent = null;
+      renderBattle();
+    });
+
+    el.newBattleBtn.addEventListener("click", () => {
+      state.battleOpponent = null;
+      renderBattle();
+    });
+
+    document.querySelectorAll("[data-battle-stat]").forEach((button) => {
+      button.addEventListener("click", () => resolveBattle(button.dataset.battleStat));
+    });
+  }
+
+  function renderBattle() {
+    if (!el.battleGame) return;
+
+    const cards = Object.values(state.collection);
+    const hasCards = cards.length > 0;
+    el.battleEmpty.classList.toggle("hidden", hasCards);
+    el.battleGame.classList.toggle("hidden", !hasCards);
+
+    el.battleWins.textContent = String(state.battleRecord.wins);
+    el.battleLosses.textContent = String(state.battleRecord.losses);
+    el.battleTies.textContent = String(state.battleRecord.ties);
+
+    if (!hasCards) return;
+
+    const previous = el.battleCardSelect.value;
+    el.battleCardSelect.innerHTML = cards
+      .sort((a, b) => rarityOrder.indexOf(b.rarity) - rarityOrder.indexOf(a.rarity))
+      .map((card) =>
+        '<option value="' + escapeAttr(card.barcode) + '">' +
+        escapeHtml(card.brand + " — " + card.name + " [" + card.rarity + "]") +
+        "</option>"
+      )
+      .join("");
+
+    if (previous && state.collection[previous]) el.battleCardSelect.value = previous;
+
+    const player = state.collection[el.battleCardSelect.value] || cards[0];
+    if (!state.battleOpponent) state.battleOpponent = makeTrainingOpponent(player);
+
+    const playerStats = cardStats(player);
+    el.playerBattleCard.innerHTML = cardMarkup(player);
+    el.opponentBattleCard.innerHTML = cardMarkup(state.battleOpponent);
+
+    el.playerBattleCard.querySelectorAll("[data-card-barcode]").forEach((b) => b.remove());
+    el.opponentBattleCard.querySelectorAll("[data-card-barcode]").forEach((b) => b.remove());
+
+    el.battlePowerValue.textContent = String(playerStats.power);
+    el.battleSpeedValue.textContent = String(playerStats.speed);
+    el.battleEnduranceValue.textContent = String(playerStats.endurance);
+    el.battleResult.textContent = "Pick a stat to clash with " + state.battleOpponent.name + ".";
+    el.battleResult.className = "battle-result";
+  }
+
+  function makeTrainingOpponent(player) {
+    const roster = [
+      { barcode: "070847811169", name: "Monster Energy Original", brand: "Monster Energy", category: "Energy", rarity: "Rare" },
+      { barcode: "049000003710", name: "Powerade Fruit Punch", brand: "Powerade", category: "Sports", rarity: "Uncommon" },
+      { barcode: "049000006346", name: "Coca-Cola Classic", brand: "Coca-Cola", category: "Soda", rarity: "Common" },
+      { barcode: "611269991000", name: "Red Bull Energy Drink", brand: "Red Bull", category: "Energy", rarity: "Epic" },
+      { barcode: "889392000313", name: "CELSIUS Sparkling Orange", brand: "CELSIUS", category: "Energy", rarity: "Rare" },
+      { barcode: "052000328677", name: "Gatorade Orange", brand: "Gatorade", category: "Sports", rarity: "Uncommon" }
+    ];
+
+    const candidates = roster.filter((entry) => entry.barcode !== player.barcode);
+    const pick = candidates[Math.floor(Math.random() * candidates.length)] || roster[0];
+    return {
+      ...pick,
+      image: "",
+      quantity: "",
+      source: "Training deck",
+      serial: serialForBarcode(pick.barcode),
+      scans: 1,
+      firstSeen: new Date().toISOString(),
+      lastSeen: new Date().toISOString()
+    };
+  }
+
+  function resolveBattle(stat) {
+    const player = state.collection[el.battleCardSelect.value];
+    const opponent = state.battleOpponent;
+    if (!player || !opponent) return;
+
+    const playerValue = cardStats(player)[stat];
+    const opponentValue = cardStats(opponent)[stat];
+    const label = stat.charAt(0).toUpperCase() + stat.slice(1);
+
+    if (playerValue > opponentValue) {
+      state.battleRecord.wins += 1;
+      el.battleResult.textContent =
+        "YOU WIN — " + label + " " + playerValue + " beats " + opponentValue + ".";
+      el.battleResult.className = "battle-result win";
+    } else if (playerValue < opponentValue) {
+      state.battleRecord.losses += 1;
+      el.battleResult.textContent =
+        "RIVAL WINS — " + opponentValue + " beats your " + label + " " + playerValue + ".";
+      el.battleResult.className = "battle-result loss";
+    } else {
+      state.battleRecord.ties += 1;
+      el.battleResult.textContent = "DRAW — both cards hit " + label + " " + playerValue + ".";
+      el.battleResult.className = "battle-result tie";
+    }
+
+    persistBattleRecord();
+    el.battleWins.textContent = String(state.battleRecord.wins);
+    el.battleLosses.textContent = String(state.battleRecord.losses);
+    el.battleTies.textContent = String(state.battleRecord.ties);
+
+    window.setTimeout(() => {
+      state.battleOpponent = null;
+      renderBattle();
+    }, 1800);
   }
 
   function bindDialogs() {
@@ -755,7 +954,8 @@
         app: "Uncapped",
         version: APP_VERSION,
         exportedAt: new Date().toISOString(),
-        collection: state.collection
+        collection: state.collection,
+        battleRecord: state.battleRecord
       };
 
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -803,6 +1003,7 @@
 
         if (confirm("Replace the collection on this device with " + Object.keys(cleaned).length + " imported cards?")) {
           state.collection = cleaned;
+          state.battleOpponent = null;
           persistCollection();
           renderAll();
           toast("Collection restored");
@@ -821,6 +1022,7 @@
       }
       if (confirm("Clear every Uncapped card stored on this device?")) {
         state.collection = {};
+        state.battleOpponent = null;
         persistCollection();
         renderAll();
         toast("Local collection cleared");
@@ -842,6 +1044,23 @@
       state.deferredInstallPrompt = null;
       el.installBtn.classList.add("hidden");
     });
+  }
+
+  function loadBattleRecord() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(BATTLE_KEY) || "{}");
+      return {
+        wins: Math.max(0, Number(parsed.wins || 0)),
+        losses: Math.max(0, Number(parsed.losses || 0)),
+        ties: Math.max(0, Number(parsed.ties || 0))
+      };
+    } catch (_) {
+      return { wins: 0, losses: 0, ties: 0 };
+    }
+  }
+
+  function persistBattleRecord() {
+    localStorage.setItem(BATTLE_KEY, JSON.stringify(state.battleRecord));
   }
 
   function loadCollection() {
