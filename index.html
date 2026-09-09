@@ -103,6 +103,59 @@
         <div id="collectionGrid" class="collection-grid"></div>
       </section>
 
+
+      <section id="playView" class="view" aria-labelledby="playTitle">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">QUICK CLASH</span>
+            <h1 id="playTitle">Play</h1>
+          </div>
+          <div class="battle-record" aria-label="Battle record">
+            <span><strong id="battleWins">0</strong> W</span>
+            <span><strong id="battleLosses">0</strong> L</span>
+            <span><strong id="battleTies">0</strong> T</span>
+          </div>
+        </div>
+
+        <div id="battleEmpty" class="empty-state">
+          <div class="empty-icon" aria-hidden="true">⚔</div>
+          <h2>You need a card to play.</h2>
+          <p>Scan any beverage and its card becomes playable immediately.</p>
+          <button class="primary-button" type="button" data-nav="scan">Scan a drink</button>
+        </div>
+
+        <div id="battleGame" class="battle-game hidden">
+          <div class="battle-controls">
+            <label for="battleCardSelect">Your fighter</label>
+            <select id="battleCardSelect" aria-label="Choose a card for battle"></select>
+            <button id="newBattleBtn" class="secondary-button compact" type="button">New rival</button>
+          </div>
+
+          <div class="battle-arena">
+            <div>
+              <span class="battle-label">YOU</span>
+              <div id="playerBattleCard" class="battle-card-mount"></div>
+            </div>
+            <div class="versus">VS</div>
+            <div>
+              <span class="battle-label">RIVAL</span>
+              <div id="opponentBattleCard" class="battle-card-mount"></div>
+            </div>
+          </div>
+
+          <div class="battle-picker">
+            <span class="eyebrow">CHOOSE YOUR STAT</span>
+            <div class="battle-stat-buttons">
+              <button type="button" class="battle-stat-button" data-battle-stat="power"><span>⚡</span><strong>Power</strong><small id="battlePowerValue">--</small></button>
+              <button type="button" class="battle-stat-button" data-battle-stat="speed"><span>➤</span><strong>Speed</strong><small id="battleSpeedValue">--</small></button>
+              <button type="button" class="battle-stat-button" data-battle-stat="endurance"><span>⬡</span><strong>Endurance</strong><small id="battleEnduranceValue">--</small></button>
+            </div>
+          </div>
+
+          <div id="battleResult" class="battle-result">Pick a stat to clash with your rival.</div>
+        </div>
+      </section>
+
       <section id="profileView" class="view" aria-labelledby="profileTitle">
         <div class="section-heading">
           <div>
@@ -135,7 +188,7 @@
           </button>
         </div>
 
-        <p class="fine-print">Phase 1 stores the collection on this device. Scanning a package creates or updates a card; Uncapped does not reward beverage quantity.</p>
+        <p class="fine-print">Uncapped stores your collection and battle record on this device. Every valid product scan creates or updates a playable card; repeated scans do not make a card stronger.</p>
       </section>
     </main>
 
@@ -147,6 +200,10 @@
       <button class="nav-item" type="button" data-nav="collection">
         <span aria-hidden="true">▦</span>
         <small>Collection</small>
+      </button>
+      <button class="nav-item" type="button" data-nav="play">
+        <span aria-hidden="true">⚔</span>
+        <small>Play</small>
       </button>
       <button class="nav-item" type="button" data-nav="profile">
         <span aria-hidden="true">◉</span>
