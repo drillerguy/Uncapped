@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "uncapped.collection.v1";
-  const APP_VERSION = "0.2.2";
+  const APP_VERSION = "0.2.3";
   const rarityOrder = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
 
   const state = {
@@ -252,11 +252,24 @@
     "810169604199": { name: "GHOST Energy A&W Root Beer", brand: "GHOST Energy", category: "Energy", quantity: "16 fl oz", source: "Verified catalog" },
     "078000804690": { name: "Dr Pepper", brand: "Dr Pepper", category: "Soda", quantity: "12 fl oz cans", source: "Verified catalog" },
     "052000328677": { name: "Gatorade Orange Thirst Quencher", brand: "Gatorade", category: "Sports", quantity: "20 fl oz", source: "Verified catalog" },
-    "052000328660": { name: "Gatorade Fruit Punch Thirst Quencher", brand: "Gatorade", category: "Sports", quantity: "20 fl oz", source: "Verified catalog" }
+    "052000328660": { name: "Gatorade Fruit Punch Thirst Quencher", brand: "Gatorade", category: "Sports", quantity: "20 fl oz", source: "Verified catalog" },
+
+    "049000003710": { name: "Powerade Fruit Punch", brand: "Powerade", category: "Sports", quantity: "20 fl oz", source: "Verified catalog" },
+    "0049000003710": { name: "Powerade Fruit Punch", brand: "Powerade", category: "Sports", quantity: "20 fl oz", source: "Verified catalog" },
+    "049000007909": { name: "Powerade Mountain Berry Blast", brand: "Powerade", category: "Sports", quantity: "20 fl oz", source: "Verified catalog" },
+    "049000045659": { name: "Powerade Mountain Berry Blast 8-Pack", brand: "Powerade", category: "Sports", quantity: "8 × 20 fl oz", source: "Verified catalog" },
+    "049000045666": { name: "Powerade Fruit Punch 8-Pack", brand: "Powerade", category: "Sports", quantity: "8 × 20 fl oz", source: "Verified catalog" },
+    "049000047141": { name: "Powerade Orange 8-Pack", brand: "Powerade", category: "Sports", quantity: "8 × 20 fl oz", source: "Verified catalog" },
+    "049000047134": { name: "Powerade Grape 8-Pack", brand: "Powerade", category: "Sports", quantity: "8 × 20 fl oz", source: "Verified catalog" },
+    "049000050752": { name: "Powerade Zero Mixed Berry 8-Pack", brand: "Powerade", category: "Sports", quantity: "8 × 20 fl oz", source: "Verified catalog" },
+    "049000050745": { name: "Powerade Zero Grape 8-Pack", brand: "Powerade", category: "Sports", quantity: "8 × 20 fl oz", source: "Verified catalog" },
+    "049000056433": { name: "Powerade Zero Fruit Punch 8-Pack", brand: "Powerade", category: "Sports", quantity: "8 × 20 fl oz", source: "Verified catalog" },
+    "049000150964": { name: "Powerade Variety Pack", brand: "Powerade", category: "Sports", quantity: "24 × 20 fl oz", source: "Verified catalog" }
   };
 
   const BRAND_PREFIXES = [
     { prefix: "012000", brand: "PepsiCo", name: "PepsiCo Beverage", category: "Beverage" },
+    { prefix: "04900000", brand: "Powerade / Coca-Cola", name: "Coca-Cola Sports Beverage", category: "Sports" },
     { prefix: "049000", brand: "The Coca-Cola Company", name: "Coca-Cola Company Beverage", category: "Beverage" },
     { prefix: "070847", brand: "Monster Energy", name: "Monster Energy Beverage", category: "Energy" },
     { prefix: "0842595", brand: "C4 Energy", name: "C4 Energy Beverage", category: "Energy" },
