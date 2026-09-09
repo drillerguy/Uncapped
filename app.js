@@ -40,6 +40,7 @@
     collectionGrid: document.getElementById("collectionGrid"),
     emptyCollection: document.getElementById("emptyCollection"),
     profileSummary: document.getElementById("profileSummary"),
+    appVersionLabel: document.getElementById("appVersionLabel"),
     shareCollectionBtn: document.getElementById("shareCollectionBtn"),
     battleEmpty: document.getElementById("battleEmpty"),
     battleGame: document.getElementById("battleGame"),
@@ -95,6 +96,7 @@
     bindBackup();
     bindInstall();
     renderAll();
+    if (el.appVersionLabel) el.appVersionLabel.textContent = "v" + APP_VERSION;
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
